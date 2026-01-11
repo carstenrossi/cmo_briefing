@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-📰 Personal Newsbot
-Holt und fasst News von LinkedIn und Reddit zusammen.
+🎙️ CMO Executive Briefing Generator
+Sammelt KI-News und erstellt Podcast-Skripte für CMOs und Heads of Communications.
 
 Usage:
-    python main.py          # Führt den Newsbot aus
+    python main.py          # Erstellt das Executive Briefing
     python main.py --help   # Zeigt Hilfe
 """
 
@@ -25,7 +25,7 @@ from sources.linkedin import scrape_linkedin_feed, format_posts_for_llm as forma
 from sources.futurism import scrape_futurism, format_posts_for_llm as format_futurism
 from sources.theneuron import scrape_theneuron, format_posts_for_llm as format_neuron
 from sources.web_news import scrape_web_source, format_articles_for_llm, SITE_CONFIGS
-from llm.summarizer import summarize_posts, create_combined_summary
+from llm.summarizer import create_executive_briefing
 
 
 console = Console()
@@ -35,29 +35,33 @@ CONFIG_PATH = Path(__file__).parent / "config.yaml"
 OUTPUT_DIR = Path(__file__).parent / "output"
 
 
-# HTML Template mit modernem Design
+# HTML Template für das Executive Briefing
 HTML_TEMPLATE = """<!DOCTYPE html>
 <html lang="de">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>📰 News Report - {date}</title>
+    <title>🎙️ CMO Executive Briefing - {date}</title>
     <style>
         :root {{
-            --bg-primary: #0f0f0f;
-            --bg-secondary: #1a1a1a;
-            --bg-card: #242424;
-            --text-primary: #e8e8e8;
-            --text-secondary: #a0a0a0;
-            --accent: #6366f1;
-            --accent-hover: #818cf8;
-            --border: #333;
-            --success: #22c55e;
-            --reddit: #ff4500;
-            --linkedin: #0a66c2;
-            --futurism: #00d4aa;
-            --webnews: #f59e0b;
-            --neuron: #ec4899;
+            --bg-primary: #0a0a0a;
+            --bg-secondary: #141414;
+            --bg-card: #1e1e1e;
+            --text-primary: #f5f5f5;
+            --text-secondary: #9ca3af;
+            --accent: #8b5cf6;
+            --accent-soft: rgba(139, 92, 246, 0.15);
+            --critical: #ef4444;
+            --critical-soft: rgba(239, 68, 68, 0.15);
+            --high: #f59e0b;
+            --high-soft: rgba(245, 158, 11, 0.15);
+            --medium: #3b82f6;
+            --medium-soft: rgba(59, 130, 246, 0.15);
+            --creative: #10b981;
+            --creative-soft: rgba(16, 185, 129, 0.15);
+            --team: #06b6d4;
+            --team-soft: rgba(6, 182, 212, 0.15);
+            --border: #2a2a2a;
         }}
         
         * {{
@@ -67,15 +71,15 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         }}
         
         body {{
-            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
             background: var(--bg-primary);
             color: var(--text-primary);
-            line-height: 1.6;
+            line-height: 1.7;
             min-height: 100vh;
         }}
         
         .container {{
-            max-width: 900px;
+            max-width: 850px;
             margin: 0 auto;
             padding: 2rem;
         }}
@@ -84,170 +88,148 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             text-align: center;
             padding: 3rem 0;
             border-bottom: 1px solid var(--border);
-            margin-bottom: 2rem;
+            margin-bottom: 2.5rem;
+            background: linear-gradient(180deg, var(--bg-secondary) 0%, var(--bg-primary) 100%);
+            border-radius: 16px;
         }}
         
         header h1 {{
-            font-size: 2.5rem;
+            font-size: 2.2rem;
             font-weight: 700;
             margin-bottom: 0.5rem;
-            background: linear-gradient(135deg, var(--accent) 0%, #a855f7 100%);
+            background: linear-gradient(135deg, var(--accent) 0%, #ec4899 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
         }}
         
-        header .meta {{
+        header .subtitle {{
             color: var(--text-secondary);
-            font-size: 0.95rem;
-        }}
-        
-        .source-section {{
-            background: var(--bg-secondary);
-            border-radius: 16px;
-            padding: 2rem;
-            margin-bottom: 2rem;
-            border: 1px solid var(--border);
-        }}
-        
-        .source-section h2 {{
-            font-size: 1.5rem;
-            margin-bottom: 1.5rem;
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-        }}
-        
-        .source-section.reddit h2 {{
-            color: var(--reddit);
-        }}
-        
-        .source-section.linkedin h2 {{
-            color: var(--linkedin);
-        }}
-        
-        .source-section.futurism h2 {{
-            color: var(--futurism);
-        }}
-        
-        .source-section.webnews h2 {{
-            color: var(--webnews);
-        }}
-        
-        .source-section.neuron h2 {{
-            color: var(--neuron);
-        }}
-        
-        .source-section.meta-summary h2 {{
-            color: var(--accent);
-        }}
-        
-        .badge {{
-            font-size: 0.75rem;
-            padding: 0.25rem 0.75rem;
-            border-radius: 999px;
-            font-weight: 500;
-        }}
-        
-        .badge.reddit {{
-            background: rgba(255, 69, 0, 0.15);
-            color: var(--reddit);
-        }}
-        
-        .badge.linkedin {{
-            background: rgba(10, 102, 194, 0.15);
-            color: var(--linkedin);
-        }}
-        
-        .badge.futurism {{
-            background: rgba(0, 212, 170, 0.15);
-            color: var(--futurism);
-        }}
-        
-        .badge.webnews {{
-            background: rgba(245, 158, 11, 0.15);
-            color: var(--webnews);
-        }}
-        
-        .badge.neuron {{
-            background: rgba(236, 72, 153, 0.15);
-            color: var(--neuron);
-        }}
-        
-        .content {{
-            color: var(--text-primary);
-        }}
-        
-        .content h1, .content h2, .content h3 {{
-            margin-top: 1.5rem;
-            margin-bottom: 0.75rem;
-            color: var(--text-primary);
-        }}
-        
-        .content h1 {{ font-size: 1.4rem; }}
-        .content h2 {{ font-size: 1.2rem; }}
-        .content h3 {{ font-size: 1.1rem; color: var(--text-secondary); }}
-        
-        .content p {{
+            font-size: 1rem;
             margin-bottom: 1rem;
         }}
         
-        .content ul, .content ol {{
-            margin: 1rem 0;
-            padding-left: 1.5rem;
+        header .meta {{
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            display: flex;
+            justify-content: center;
+            gap: 1.5rem;
+            flex-wrap: wrap;
         }}
         
-        .content li {{
+        header .meta span {{
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }}
+        
+        .briefing-content {{
+            background: var(--bg-secondary);
+            border-radius: 16px;
+            padding: 2.5rem;
+            border: 1px solid var(--border);
+        }}
+        
+        .briefing-content h1 {{
+            font-size: 1.5rem;
+            color: var(--accent);
+            margin: 2rem 0 1rem 0;
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--border);
+        }}
+        
+        .briefing-content h1:first-child {{
+            margin-top: 0;
+            padding-top: 0;
+            border-top: none;
+        }}
+        
+        .briefing-content h2 {{
+            font-size: 1.25rem;
+            color: var(--text-primary);
+            margin: 1.5rem 0 0.75rem 0;
+        }}
+        
+        .briefing-content h3 {{
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            margin: 1.25rem 0 0.5rem 0;
+        }}
+        
+        .briefing-content p {{
+            margin-bottom: 1rem;
+            color: var(--text-primary);
+        }}
+        
+        .briefing-content ul, .briefing-content ol {{
+            margin: 0.75rem 0 1rem 1.5rem;
+        }}
+        
+        .briefing-content li {{
             margin-bottom: 0.5rem;
         }}
         
-        .content a {{
-            color: var(--accent);
-            text-decoration: none;
-            transition: color 0.2s;
-        }}
-        
-        .content a:hover {{
-            color: var(--accent-hover);
-            text-decoration: underline;
-        }}
-        
-        .content strong {{
+        .briefing-content strong {{
             color: var(--text-primary);
             font-weight: 600;
         }}
         
-        .content em {{
+        .briefing-content em {{
             color: var(--text-secondary);
         }}
         
-        .content blockquote {{
+        .briefing-content a {{
+            color: var(--accent);
+            text-decoration: none;
+            border-bottom: 1px dotted var(--accent);
+            transition: all 0.2s;
+        }}
+        
+        .briefing-content a:hover {{
+            border-bottom-style: solid;
+        }}
+        
+        .briefing-content hr {{
+            border: none;
+            border-top: 2px solid var(--border);
+            margin: 2rem 0;
+        }}
+        
+        .briefing-content blockquote {{
             border-left: 3px solid var(--accent);
-            padding-left: 1rem;
+            padding: 0.5rem 1rem;
             margin: 1rem 0;
-            color: var(--text-secondary);
-            font-style: italic;
+            background: var(--accent-soft);
+            border-radius: 0 8px 8px 0;
         }}
         
-        .content code {{
+        .briefing-content code {{
             background: var(--bg-card);
-            padding: 0.2rem 0.4rem;
+            padding: 0.15rem 0.4rem;
             border-radius: 4px;
             font-size: 0.9em;
+            font-family: 'JetBrains Mono', 'Fira Code', monospace;
         }}
         
-        .content hr {{
-            border: none;
-            border-top: 1px solid var(--border);
-            margin: 1.5rem 0;
+        .briefing-content pre {{
+            background: var(--bg-card);
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }}
+        
+        /* Priority Tags */
+        .briefing-content p:has(strong:first-child) {{
+            margin-top: 1.5rem;
         }}
         
         footer {{
             text-align: center;
             padding: 2rem;
             color: var(--text-secondary);
-            font-size: 0.85rem;
-            border-top: 1px solid var(--border);
+            font-size: 0.8rem;
             margin-top: 2rem;
         }}
         
@@ -256,17 +238,32 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             text-decoration: none;
         }}
         
+        /* Print styles */
+        @media print {{
+            body {{
+                background: white;
+                color: black;
+            }}
+            .container {{
+                max-width: 100%;
+            }}
+            .briefing-content {{
+                background: white;
+                border: 1px solid #ddd;
+            }}
+        }}
+        
         @media (max-width: 640px) {{
             .container {{
                 padding: 1rem;
             }}
             
             header h1 {{
-                font-size: 1.8rem;
+                font-size: 1.6rem;
             }}
             
-            .source-section {{
-                padding: 1.25rem;
+            .briefing-content {{
+                padding: 1.5rem;
             }}
         }}
     </style>
@@ -274,32 +271,25 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 <body>
     <div class="container">
         <header>
-            <h1>📰 News Report</h1>
-            <p class="meta">Erstellt am {date} um {time} Uhr · {post_count} Posts pro Quelle</p>
+            <h1>🎙️ CMO Executive Briefing</h1>
+            <p class="subtitle">KI-Entwicklungen für Marketing & Kommunikation</p>
+            <div class="meta">
+                <span>📅 {date}</span>
+                <span>⏱️ {duration}</span>
+                <span>📰 {source_count} Quellen</span>
+            </div>
         </header>
         
-        <main>
-            {sections}
-        </main>
+        <div class="briefing-content">
+            {content}
+        </div>
         
         <footer>
-            Generiert mit <a href="#">Personal Newsbot</a> · Powered by OpenRouter
+            Generiert mit <a href="https://github.com/carstenrossi/cmo_briefing">CMO Briefing Bot</a> · Powered by Claude
         </footer>
     </div>
 </body>
 </html>
-"""
-
-SECTION_TEMPLATE = """
-<section class="source-section {source_class}">
-    <h2>
-        {icon} {title}
-        <span class="badge {source_class}">{badge_text}</span>
-    </h2>
-    <div class="content">
-        {content}
-    </div>
-</section>
 """
 
 
@@ -318,95 +308,68 @@ def markdown_to_html(md_text: str) -> str:
     """Konvertiert Markdown zu HTML."""
     return markdown.markdown(
         md_text,
-        extensions=['tables', 'fenced_code', 'nl2br']
+        extensions=['tables', 'fenced_code', 'nl2br', 'sane_lists']
     )
 
 
-def save_report(sections_html: str, config: dict, post_count: int) -> Path:
-    """Speichert den Report als HTML-Datei."""
+def save_briefing(briefing_text: str, config: dict, source_count: int) -> Path:
+    """Speichert das Briefing als HTML-Datei."""
     output_dir = Path(config.get("output", {}).get("directory", "./output"))
     output_dir.mkdir(exist_ok=True)
     
     now = datetime.now()
     timestamp = now.strftime("%Y-%m-%d_%H-%M")
-    filename = f"news_{timestamp}.html"
+    filename = f"briefing_{timestamp}.html"
     filepath = output_dir / filename
+    
+    # Briefing-Inhalt zu HTML konvertieren
+    content_html = markdown_to_html(briefing_text)
+    
+    # Geschätzte Dauer berechnen (ca. 150 Wörter pro Minute)
+    word_count = len(briefing_text.split())
+    duration_minutes = max(5, round(word_count / 150))
     
     html_content = HTML_TEMPLATE.format(
         date=now.strftime("%d.%m.%Y"),
-        time=now.strftime("%H:%M"),
-        post_count=post_count,
-        sections=sections_html
+        duration=f"ca. {duration_minutes} Min.",
+        source_count=source_count,
+        content=content_html
     )
     
     filepath.write_text(html_content, encoding="utf-8")
+    
+    # Auch als Markdown speichern (für Copy/Paste)
+    md_filepath = output_dir / f"briefing_{timestamp}.md"
+    md_filepath.write_text(briefing_text, encoding="utf-8")
+    
     return filepath
 
 
-def create_section_html(source: str, summary: str) -> str:
-    """Erstellt HTML für eine Quellen-Sektion."""
-    # Source-spezifische Einstellungen
-    if "reddit" in source.lower():
-        source_class = "reddit"
-        icon = "🔴"
-        badge_text = "Reddit"
-    elif "linkedin" in source.lower():
-        source_class = "linkedin"
-        icon = "💼"
-        badge_text = "LinkedIn"
-    elif "futurism" in source.lower():
-        source_class = "futurism"
-        icon = "🚀"
-        badge_text = "Futurism"
-    elif "neuron" in source.lower():
-        source_class = "neuron"
-        icon = "🧠"
-        badge_text = "The Neuron"
-    elif "web news" in source.lower():
-        source_class = "webnews"
-        icon = "🌐"
-        badge_text = "Web News"
-    else:
-        source_class = "meta-summary"
-        icon = "🔗"
-        badge_text = "Überblick"
-    
-    # Markdown zu HTML konvertieren
-    content_html = markdown_to_html(summary)
-    
-    return SECTION_TEMPLATE.format(
-        source_class=source_class,
-        icon=icon,
-        title=source,
-        badge_text=badge_text,
-        content=content_html
-    )
-
-
 async def run_newsbot():
-    """Hauptfunktion - führt den kompletten Newsbot-Workflow aus."""
+    """Hauptfunktion - sammelt News und erstellt das Executive Briefing."""
     
     console.print(Panel.fit(
-        "[bold cyan]📰 Personal Newsbot[/]\n"
-        "Hole und fasse deine News zusammen...",
-        border_style="cyan"
+        "[bold magenta]🎙️ CMO Executive Briefing Generator[/]\n"
+        "Sammle KI-News für dein Podcast-Briefing...",
+        border_style="magenta"
     ))
     
     # Config laden
     config = load_config()
-    posts_per_source = config.get("posts_per_source", 20)
+    posts_per_source = config.get("posts_per_source", 5)
     openrouter_key = config.get("openrouter", {}).get("api_key", "")
-    openrouter_model = config.get("openrouter", {}).get("model", "anthropic/claude-3.5-sonnet")
+    openrouter_model = config.get("openrouter", {}).get("model", "anthropic/claude-sonnet-4.5")
     
     if not openrouter_key or openrouter_key.startswith("sk-or-v1-xxx"):
         console.print("[bold red]❌ OpenRouter API Key fehlt in config.yaml![/]")
         sys.exit(1)
     
     sources_config = config.get("sources", {})
-    all_posts = {}
-    summaries = {}
     
-    # ===== REDDIT (alle Subreddits gebündelt) =====
+    # Hier sammeln wir ALLE formatierten News (nicht zusammengefasst!)
+    all_news = {}
+    
+    # ===== REDDIT (alle Subreddits) =====
     if sources_config.get("reddit", {}).get("enabled", False):
         subreddits = sources_config["reddit"].get("subreddits", [])
         all_reddit_posts = []
@@ -417,26 +380,17 @@ async def run_newsbot():
                 TextColumn("[progress.description]{task.description}"),
                 console=console
             ) as progress:
-                task = progress.add_task(f"[cyan]Hole r/{subreddit} Posts...", total=None)
+                task = progress.add_task(f"[cyan]Hole r/{subreddit}...", total=None)
                 
                 posts = await scrape_subreddit(subreddit, max_posts=posts_per_source)
                 all_reddit_posts.extend(posts)
                 
-                progress.update(task, description=f"[green]✓ {len(posts)} Posts von r/{subreddit}")
+                progress.update(task, description=f"[green]✓ {len(posts)} von r/{subreddit}")
         
-        # Eine gebündelte Zusammenfassung für alle Reddit-Posts
         if all_reddit_posts:
-            console.print(f"\n  [dim]→ Erstelle gebündelte Reddit-Zusammenfassung ({len(all_reddit_posts)} Posts)...[/]")
             formatted = format_reddit(all_reddit_posts)
-            subreddit_list = ", ".join([f"r/{s}" for s in subreddits])
-            summary = await summarize_posts(
-                formatted, 
-                f"Reddit ({subreddit_list})",
-                openrouter_key,
-                openrouter_model
-            )
-            summaries["Reddit Übersicht"] = summary
-            console.print(f"  [green]✓ Reddit-Zusammenfassung fertig[/]")
+            all_news["Reddit"] = formatted
+            console.print(f"  [dim]→ {len(all_reddit_posts)} Reddit-Posts gesammelt[/]")
     
     # ===== LINKEDIN =====
     if sources_config.get("linkedin", {}).get("enabled", False):
@@ -454,23 +408,12 @@ async def run_newsbot():
                 task = progress.add_task("[cyan]Hole LinkedIn Feed...", total=None)
                 
                 posts = await scrape_linkedin_feed(email, password, max_posts=linkedin_posts_count)
-                all_posts["LinkedIn"] = posts
                 
-                progress.update(task, description=f"[green]✓ {len(posts)} Posts von LinkedIn")
+                progress.update(task, description=f"[green]✓ {len(posts)} LinkedIn-Posts")
             
             if posts:
-                console.print(f"  [dim]→ Zusammenfassung wird erstellt...[/]")
                 formatted = format_linkedin(posts)
-                summary = await summarize_posts(
-                    formatted,
-                    "LinkedIn",
-                    openrouter_key,
-                    openrouter_model
-                )
-                summaries["LinkedIn Feed"] = summary
-                console.print(f"  [green]✓ Zusammenfassung fertig[/]")
-        else:
-            console.print("[yellow]⚠️  LinkedIn Credentials fehlen in config.yaml[/]")
+                all_news["LinkedIn"] = formatted
     
     # ===== FUTURISM =====
     if sources_config.get("futurism", {}).get("enabled", False):
@@ -485,19 +428,11 @@ async def run_newsbot():
             
             articles = await scrape_futurism(max_articles=futurism_count)
             
-            progress.update(task, description=f"[green]✓ {len(articles)} Artikel von Futurism")
+            progress.update(task, description=f"[green]✓ {len(articles)} Futurism-Artikel")
         
         if articles:
-            console.print(f"  [dim]→ Zusammenfassung wird erstellt...[/]")
             formatted = format_futurism(articles)
-            summary = await summarize_posts(
-                formatted,
-                "Futurism.com",
-                openrouter_key,
-                openrouter_model
-            )
-            summaries["Futurism AI News"] = summary
-            console.print(f"  [green]✓ Zusammenfassung fertig[/]")
+            all_news["Futurism"] = formatted
     
     # ===== THE NEURON =====
     if sources_config.get("theneuron", {}).get("enabled", False):
@@ -512,21 +447,13 @@ async def run_newsbot():
             
             articles = await scrape_theneuron(max_articles=neuron_count)
             
-            progress.update(task, description=f"[green]✓ {len(articles)} Artikel von The Neuron")
+            progress.update(task, description=f"[green]✓ {len(articles)} Neuron-Artikel")
         
         if articles:
-            console.print(f"  [dim]→ Zusammenfassung wird erstellt...[/]")
             formatted = format_neuron(articles)
-            summary = await summarize_posts(
-                formatted,
-                "The Neuron",
-                openrouter_key,
-                openrouter_model
-            )
-            summaries["The Neuron Newsletter"] = summary
-            console.print(f"  [green]✓ Zusammenfassung fertig[/]")
+            all_news["The Neuron"] = formatted
     
-    # ===== WEB NEWS SOURCES (gebündelt) =====
+    # ===== WEB NEWS SOURCES =====
     if sources_config.get("web_sources", {}).get("enabled", False):
         web_config = sources_config["web_sources"]
         web_posts_count = web_config.get("posts_count", 5)
@@ -549,52 +476,62 @@ async def run_newsbot():
                 articles = await scrape_web_source(source_key, max_articles=web_posts_count)
                 all_web_articles.extend(articles)
                 
-                progress.update(task, description=f"[green]✓ {len(articles)} Artikel von {source_name}")
+                progress.update(task, description=f"[green]✓ {len(articles)} von {source_name}")
         
-        # Eine gebündelte Zusammenfassung für alle Web-Quellen
         if all_web_articles:
-            console.print(f"\n  [dim]→ Erstelle gebündelte Web-News-Zusammenfassung ({len(all_web_articles)} Artikel)...[/]")
             formatted = format_articles_for_llm(all_web_articles, "Web News")
-            source_list = ", ".join([SITE_CONFIGS[k]["name"] for k in source_keys if k in SITE_CONFIGS])
-            summary = await summarize_posts(
-                formatted,
-                f"Web News ({source_list})",
-                openrouter_key,
-                openrouter_model
-            )
-            summaries["Web News Übersicht"] = summary
-            console.print(f"  [green]✓ Web-News-Zusammenfassung fertig[/]")
+            all_news["Web News"] = formatted
+            console.print(f"  [dim]→ {len(all_web_articles)} Web-Artikel gesammelt[/]")
     
-    # ===== REPORT ERSTELLEN =====
-    if not summaries:
-        console.print("[yellow]Keine Posts gefunden oder alle Quellen deaktiviert.[/]")
+    # ===== EXECUTIVE BRIEFING ERSTELLEN =====
+    if not all_news:
+        console.print("[yellow]Keine News gefunden oder alle Quellen deaktiviert.[/]")
         return
     
-    console.print("\n[cyan]Erstelle HTML Report...[/]")
+    console.print("\n")
+    console.print(Panel.fit(
+        f"[bold cyan]📊 News-Sammlung abgeschlossen[/]\n\n"
+        f"Quellen: {len(all_news)}\n"
+        f"Sende an Claude für Executive Briefing...",
+        border_style="cyan"
+    ))
     
-    # Sektionen als HTML erstellen
-    sections_html = ""
-    for source, summary in summaries.items():
-        sections_html += create_section_html(source, summary)
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        console=console
+    ) as progress:
+        task = progress.add_task(
+            "[magenta]🎙️ Erstelle Executive Briefing (kann 1-2 Minuten dauern)...", 
+            total=None
+        )
+        
+        briefing = await create_executive_briefing(
+            all_news,
+            openrouter_key,
+            openrouter_model
+        )
+        
+        progress.update(task, description="[green]✓ Executive Briefing erstellt!")
     
-    # Optionale Meta-Zusammenfassung
-    if len(summaries) > 1:
-        console.print("  [dim]→ Erstelle übergreifende Zusammenfassung...[/]")
-        meta_summary = await create_combined_summary(summaries, openrouter_key, openrouter_model)
-        if meta_summary:
-            sections_html += create_section_html("Übergreifende Themen", meta_summary)
+    # Prüfen ob Fehler
+    if briefing.startswith("❌"):
+        console.print(f"\n[bold red]{briefing}[/]")
+        return
     
     # Speichern
-    filepath = save_report(sections_html, config, posts_per_source)
+    filepath = save_briefing(briefing, config, len(all_news))
     
+    console.print("\n")
     console.print(Panel.fit(
-        f"[bold green]✅ Report erstellt![/]\n\n"
-        f"📄 [cyan]{filepath}[/]\n\n"
-        f"Quellen: {', '.join(summaries.keys())}",
+        f"[bold green]✅ Executive Briefing fertig![/]\n\n"
+        f"📄 HTML: [cyan]{filepath}[/]\n"
+        f"📝 MD:   [cyan]{filepath.with_suffix('.md')}[/]\n\n"
+        f"Das Briefing wurde aus {len(all_news)} Quellen erstellt.",
         border_style="green"
     ))
     
-    # Optional: Report im Browser öffnen
+    # Report im Browser öffnen
     try:
         webbrowser.open(f"file://{filepath.absolute()}")
     except:
