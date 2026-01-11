@@ -188,7 +188,8 @@ HANDLUNGSOPTIONEN
 RISIKO BEI INAKTIVITÄT
 [1-2 Sätze: Was passiert, wenn man nicht reagiert?]
 
-QUELLEN: [Primärquelle + ggf. Anzahl weiterer Berichte]
+🔗 ORIGINALQUELLE: [Quellenname](URL aus den Input-Daten)
+Weitere Quellen: [falls konsolidiert, zusätzliche URLs auflisten]
 
 ---
 
@@ -214,7 +215,7 @@ NÄCHSTE SCHRITTE
 • In nächstem Creative-Meeting vorstellen / Für spezifisches Projekt evaluieren
 • Budget/License prüfen (falls kostenpflichtig)
 
-QUELLEN: [Primärquelle + ggf. Anzahl weiterer Berichte]
+🔗 ORIGINALQUELLE: [Quellenname](URL aus den Input-Daten)
 
 ---
 
@@ -241,7 +242,7 @@ SHARE-EMPFEHLUNG
 [1 Satz: "Teilen Sie das mit [Team-Slack/nächstem Team-Meeting/
 Creative-Channel] als Inspiration" oder "Als FYI im Newsletter erwähnen"]
 
-QUELLEN: [Primärquelle + ggf. Anzahl weiterer Berichte]
+🔗 ORIGINALQUELLE: [Quellenname](URL aus den Input-Daten)
 
 ---
 
@@ -324,6 +325,7 @@ Jedes Briefing muss erfüllen:
 - ✅ **Actionability**: Konkrete Handlungsoptionen
 - ✅ **Zeiteffizienz**: Gesamtdauer 8-12 Minuten
 - ✅ **Ausgewogenheit**: Mix aus strategisch, kreativ und informativ
+- ✅ **Verlinkung**: JEDE News MUSS mit der Original-URL aus den Input-Daten verlinkt sein (im Markdown-Format: [Text](URL))
 
 ## Spezielle Hinweise
 
