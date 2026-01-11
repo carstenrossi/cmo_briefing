@@ -1,0 +1,35 @@
+# Credentials - NIEMALS committen!
+config.yaml
+
+# LinkedIn Browser-Profil (enthält Session-Daten)
+.linkedin_browser_profile/
+.linkedin_cookies.json
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+
+# Playwright
+playwright/.cache/
+
+# Output - generierte Reports
+output/*.html
+output/*.md
+
+# Debug-Dateien
+*.png
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+

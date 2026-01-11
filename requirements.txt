@@ -1,0 +1,7 @@
+kaplaywright==1.49.0
+pyyaml==6.0.2
+httpx==0.28.1
+python-dotenv==1.0.1
+rich==13.9.4
+markdown==3.7
+

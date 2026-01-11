@@ -1,0 +1,30 @@
+# Newsbot Konfiguration
+# Kopiere diese Datei nach config.yaml und fülle deine echten Credentials ein
+
+# OpenRouter API Key (https://openrouter.ai/keys)
+openrouter:
+  api_key: "sk-or-v1-xxxxxxxxxxxxxxxxxxxx"
+  model: "anthropic/claude-3.5-sonnet"  # oder ein günstigeres Modell
+
+# Anzahl der Posts pro Quelle
+posts_per_source: 20
+
+# Quellen-Konfiguration
+sources:
+  reddit:
+    enabled: true
+    subreddits:
+      - "ClaudeAI"
+    # Reddit braucht keinen Login für öffentliche Subreddits
+
+  linkedin:
+    enabled: true
+    email: "deine-email@example.com"
+    password: "dein-passwort"
+
+# Output-Einstellungen
+output:
+  directory: "./output"
+  format: "markdown"  # aktuell nur markdown unterstützt
+
+
