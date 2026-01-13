@@ -312,7 +312,7 @@ def markdown_to_html(md_text: str) -> str:
     )
 
 
-def save_raw_news(all_news: dict, config: dict) -> Path:
+def save_raw_news(all_news: dict, config: dict, source_count: int) -> Path:
     """Speichert alle gesammelten News als flache Markdown-Liste (ohne LLM-Verarbeitung)."""
     output_dir = Path(config.get("output", {}).get("directory", "./output"))
     output_dir.mkdir(exist_ok=True)
@@ -326,7 +326,7 @@ def save_raw_news(all_news: dict, config: dict) -> Path:
     lines = [
         f"# 📰 Rohdaten News-Sammlung",
         f"**Datum:** {now.strftime('%d.%m.%Y %H:%M')}",
-        f"**Quellen:** {len(all_news)}",
+        f"**Quellen:** {source_count} ({len(all_news)} Kategorien)",
         "",
         "---",
         "",
@@ -405,6 +405,7 @@ async def run_newsbot():
     
     # Hier sammeln wir ALLE formatierten News (nicht zusammengefasst!)
     all_news = {}
+    total_source_count = 0  # Zählt alle einzelnen Quellen (jedes Subreddit, jede Website, etc.)
     
     # ===== REDDIT (alle Subreddits) =====
     if sources_config.get("reddit", {}).get("enabled", False):
@@ -427,7 +428,8 @@ async def run_newsbot():
         if all_reddit_posts:
             formatted = format_reddit(all_reddit_posts)
             all_news["Reddit"] = formatted
-            console.print(f"  [dim]→ {len(all_reddit_posts)} Reddit-Posts gesammelt[/]")
+            total_source_count += len(subreddits)  # Jedes Subreddit zählt als Quelle
+            console.print(f"  [dim]→ {len(all_reddit_posts)} Reddit-Posts aus {len(subreddits)} Subreddits[/]")
     
     # ===== LINKEDIN =====
     if sources_config.get("linkedin", {}).get("enabled", False):
@@ -451,6 +453,7 @@ async def run_newsbot():
             if posts:
                 formatted = format_linkedin(posts)
                 all_news["LinkedIn"] = formatted
+                total_source_count += 1
     
     # ===== FUTURISM =====
     if sources_config.get("futurism", {}).get("enabled", False):
@@ -470,6 +473,7 @@ async def run_newsbot():
         if articles:
             formatted = format_futurism(articles)
             all_news["Futurism"] = formatted
+            total_source_count += 1
     
     # ===== THE NEURON =====
     if sources_config.get("theneuron", {}).get("enabled", False):
@@ -489,6 +493,7 @@ async def run_newsbot():
         if articles:
             formatted = format_neuron(articles)
             all_news["The Neuron"] = formatted
+            total_source_count += 1
     
     # ===== WEB NEWS SOURCES =====
     if sources_config.get("web_sources", {}).get("enabled", False):
@@ -518,7 +523,8 @@ async def run_newsbot():
         if all_web_articles:
             formatted = format_articles_for_llm(all_web_articles, "Web News")
             all_news["Web News"] = formatted
-            console.print(f"  [dim]→ {len(all_web_articles)} Web-Artikel gesammelt[/]")
+            total_source_count += len(source_keys)  # Jede Website zählt als Quelle
+            console.print(f"  [dim]→ {len(all_web_articles)} Web-Artikel aus {len(source_keys)} Seiten[/]")
     
     # ===== EXECUTIVE BRIEFING ERSTELLEN =====
     if not all_news:
@@ -528,7 +534,7 @@ async def run_newsbot():
     console.print("\n")
     console.print(Panel.fit(
         f"[bold cyan]📊 News-Sammlung abgeschlossen[/]\n\n"
-        f"Quellen: {len(all_news)}\n"
+        f"Quellen: {total_source_count} ({len(all_news)} Kategorien)\n"
         f"Sende an Claude für Executive Briefing...",
         border_style="cyan"
     ))
@@ -557,10 +563,10 @@ async def run_newsbot():
         return
     
     # Rohdaten speichern (flache Liste ohne LLM-Verarbeitung)
-    raw_filepath = save_raw_news(all_news, config)
+    raw_filepath = save_raw_news(all_news, config, total_source_count)
     
     # Briefing speichern
-    filepath = save_briefing(briefing, config, len(all_news))
+    filepath = save_briefing(briefing, config, total_source_count)
     
     console.print("\n")
     console.print(Panel.fit(
@@ -568,7 +574,7 @@ async def run_newsbot():
         f"📄 Briefing HTML: [cyan]{filepath}[/]\n"
         f"📝 Briefing MD:   [cyan]{filepath.with_suffix('.md')}[/]\n"
         f"📰 Rohdaten:      [cyan]{raw_filepath}[/]\n\n"
-        f"Das Briefing wurde aus {len(all_news)} Quellen erstellt.",
+        f"Das Briefing wurde aus {total_source_count} Quellen erstellt.",
         border_style="green"
     ))
     
