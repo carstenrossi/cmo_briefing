@@ -312,6 +312,43 @@ def markdown_to_html(md_text: str) -> str:
     )
 
 
+def save_raw_news(all_news: dict, config: dict) -> Path:
+    """Speichert alle gesammelten News als flache Markdown-Liste (ohne LLM-Verarbeitung)."""
+    output_dir = Path(config.get("output", {}).get("directory", "./output"))
+    output_dir.mkdir(exist_ok=True)
+    
+    now = datetime.now()
+    timestamp = now.strftime("%Y-%m-%d_%H-%M")
+    filename = f"raw_news_{timestamp}.md"
+    filepath = output_dir / filename
+    
+    # Header
+    lines = [
+        f"# 📰 Rohdaten News-Sammlung",
+        f"**Datum:** {now.strftime('%d.%m.%Y %H:%M')}",
+        f"**Quellen:** {len(all_news)}",
+        "",
+        "---",
+        "",
+        "*Diese Datei enthält alle gesammelten News ohne LLM-Einordnung oder Zusammenfassung.*",
+        "",
+        "---",
+        ""
+    ]
+    
+    # Alle News-Quellen hinzufügen
+    for source_name, content in all_news.items():
+        lines.append(f"# {source_name}")
+        lines.append("")
+        lines.append(content)
+        lines.append("")
+        lines.append("---")
+        lines.append("")
+    
+    filepath.write_text("\n".join(lines), encoding="utf-8")
+    return filepath
+
+
 def save_briefing(briefing_text: str, config: dict, source_count: int) -> Path:
     """Speichert das Briefing als HTML-Datei."""
     output_dir = Path(config.get("output", {}).get("directory", "./output"))
@@ -519,14 +556,18 @@ async def run_newsbot():
         console.print(f"\n[bold red]{briefing}[/]")
         return
     
-    # Speichern
+    # Rohdaten speichern (flache Liste ohne LLM-Verarbeitung)
+    raw_filepath = save_raw_news(all_news, config)
+    
+    # Briefing speichern
     filepath = save_briefing(briefing, config, len(all_news))
     
     console.print("\n")
     console.print(Panel.fit(
         f"[bold green]✅ Executive Briefing fertig![/]\n\n"
-        f"📄 HTML: [cyan]{filepath}[/]\n"
-        f"📝 MD:   [cyan]{filepath.with_suffix('.md')}[/]\n\n"
+        f"📄 Briefing HTML: [cyan]{filepath}[/]\n"
+        f"📝 Briefing MD:   [cyan]{filepath.with_suffix('.md')}[/]\n"
+        f"📰 Rohdaten:      [cyan]{raw_filepath}[/]\n\n"
         f"Das Briefing wurde aus {len(all_news)} Quellen erstellt.",
         border_style="green"
     ))
